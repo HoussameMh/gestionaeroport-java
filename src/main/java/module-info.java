@@ -4,8 +4,13 @@ module com.example.javafx2 {
 
     requires org.controlsfx.controls;
     requires com.dlsc.formsfx;
+    
+    // Modules JDBC pour l'accès à la base de données
+    requires java.sql;
+    requires java.desktop;
 
     opens com.example.javafx2 to javafx.fxml;
     exports com.example.javafx2;
     exports com.example.javafx2.logic;
+    exports com.example.javafx2.data;
 }

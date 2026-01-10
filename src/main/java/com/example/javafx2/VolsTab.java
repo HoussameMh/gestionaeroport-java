@@ -1,5 +1,6 @@
 package com.example.javafx2;
 
+import com.example.javafx2.data.DataManager;
 import com.example.javafx2.logic.*;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -9,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class VolsTab extends VBox {
     
     private gestion_aeroport aeroport;
+    private DataManager dataManager;
     private ComboBox<Avion> avionComboBox;
     private DatePicker datePicker;
     private TextField destinationField;
@@ -27,6 +30,16 @@ public class VolsTab extends VBox {
     
     public VolsTab(gestion_aeroport aeroport) {
         this.aeroport = aeroport;
+        // Initialiser le gestionnaire de données JDBC
+        this.dataManager = new DataManager();
+        try {
+            // Initialiser les tables de la base de données
+            dataManager.initialiserTables();
+            System.out.println("Base de données initialisée avec succès dans VolsTab.");
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'initialisation de la base de données dans VolsTab: " + e.getMessage());
+            e.printStackTrace();
+        }
         setupUI();
     }
     
@@ -201,6 +214,19 @@ public class VolsTab extends VBox {
                 Avion newAvion = new Avion(matricule, dimW, dimH, longArret, tempsArret,
                         longDep, tempsDep, masse, capacite, "disponible", 0.0, 0.0);
                 aeroport.ajouter_avion(newAvion);
+                
+                // Insérer l'avion dans la base de données
+                try {
+                    if (dataManager != null) {
+                        dataManager.insererAvion(newAvion);
+                        System.out.println("Avion inséré avec succès dans la base de données. Matricule: " + newAvion.getMatricule());
+                    }
+                } catch (SQLException sqlEx) {
+                    // L'avion peut déjà exister dans la base de données, ce n'est pas critique
+                    System.err.println("Note: L'avion peut déjà exister dans la base de données: " + sqlEx.getMessage());
+                    sqlEx.printStackTrace();
+                }
+                
                 updateAvionComboBox();
                 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -267,6 +293,18 @@ public class VolsTab extends VBox {
             // planifier() vérifiera à nouveau, mais maintenant ça devrait passer
             // car on a déjà vérifié et le Vol a été créé avec un avion disponible
             aeroport.planifier(newVol);
+            
+            // Insérer le vol dans la base de données
+            try {
+                if (dataManager != null) {
+                    dataManager.insererVol(newVol);
+                    System.out.println("Vol inséré avec succès dans la base de données. ID: " + newVol.getId_vol());
+                }
+            } catch (SQLException e) {
+                // Le vol peut déjà exister dans la base de données, ce n'est pas critique
+                System.err.println("Note: Le vol peut déjà exister dans la base de données: " + e.getMessage());
+                // On continue quand même car le vol a été créé en mémoire
+            }
             
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Succès");

@@ -1,5 +1,6 @@
 package com.example.javafx2;
 
+import com.example.javafx2.data.DataManager;
 import com.example.javafx2.logic.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -8,6 +9,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
@@ -17,6 +19,7 @@ public class PassagersTab extends BorderPane {
     private gestion_aeroport aeroport;
     private ComboBox<Vol> volComboBox;
     private Vol selectedVol;
+    private DataManager dataManager;
     
     // Passenger form fields
     private TextField passagerPassportField;
@@ -36,6 +39,20 @@ public class PassagersTab extends BorderPane {
     
     public PassagersTab(gestion_aeroport aeroport) {
         this.aeroport = aeroport;
+        // Initialiser le gestionnaire de données JDBC
+        this.dataManager = new DataManager();
+        try {
+            // Initialiser les tables de la base de données
+            dataManager.initialiserTables();
+            System.out.println("Base de données initialisée avec succès.");
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'initialisation de la base de données: " + e.getMessage());
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Attention");
+            alert.setHeaderText("Base de données");
+            alert.setContentText("Impossible d'initialiser la base de données. Le système fonctionnera en mode mémoire.\n" + e.getMessage());
+            alert.showAndWait();
+        }
         setupUI();
     }
     
@@ -252,16 +269,70 @@ public class PassagersTab extends BorderPane {
             Date dateNaissance = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
             double masseBagage = Double.parseDouble(passagerBagageField.getText());
             
-            // Create Passager - constructor will check seat availability and add to vol
+            // Vérifier la disponibilité des sièges avant d'ajouter
+            selectedVol.seatDispo();
+            
+            // Vérifier si le passager existe déjà dans la base de données
+            if (dataManager != null) {
+                boolean existe = dataManager.passagerExiste(passport);
+                if (existe) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Attention");
+                    alert.setHeaderText(null);
+                    alert.setContentText("Un passager avec ce numéro de passeport existe déjà dans la base de données.");
+                    alert.showAndWait();
+                    return;
+                }
+            }
+            
+            // Vérifier le poids du bagage AVANT de créer le passager et l'insérer en BD
+            // On crée un objet Passager temporaire pour vérifier le bagage
+            // Note: On ne peut pas vérifier le bagage sans créer le passager, donc on vérifie manuellement
+            if (masseBagage >= selectedVol.getAvion().getMasse_supportee()) {
+                throw new BagageTropLourdException(masseBagage, selectedVol.getAvion().getMasse_supportee());
+            }
+            
+            // Créer le Passager en mémoire (pour la logique métier)
             Passager passager = new Passager(passport, nom, prenom, genre, dateNaissance, selectedVol, masseBagage);
             
-            // Verify baggage weight
-            passager.verifier_bag();
+            // Insérer dans la base de données via JDBC avec PreparedStatement
+            // Gestion des erreurs SQLException comme enseigné dans le cours JDBC
+            try {
+                if (dataManager != null) {
+                    // S'assurer que le vol existe dans la base de données
+                    try {
+                        dataManager.insererVol(selectedVol);
+                    } catch (SQLException e) {
+                        // Le vol peut déjà exister, ce n'est pas une erreur critique
+                        System.out.println("Note: Le vol peut déjà exister dans la base de données.");
+                    }
+                    
+                    // Ajouter le passager dans la base de données via PreparedStatement
+                    dataManager.ajouterPassager(passager);
+                    System.out.println("Passager ajouté avec succès dans la base de données via JDBC.");
+                }
+            } catch (SQLException e) {
+                // Gestion des erreurs SQLException comme enseigné dans le cours JDBC
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Erreur Base de Données");
+                alert.setHeaderText("SQLException");
+                alert.setContentText("Erreur lors de l'ajout du passager dans la base de données:\n" + 
+                                    e.getMessage() + "\n\n" +
+                                    "Code d'erreur SQL: " + e.getSQLState() + "\n" +
+                                    "Code d'erreur fournisseur: " + e.getErrorCode());
+                alert.showAndWait();
+                e.printStackTrace();
+                
+                // Le passager a été créé en mémoire mais pas en BD, donc on annule l'ajout
+                // Retirer le passager de la liste et décrémenter seat_occupee
+                selectedVol.retirer_passager(passager);
+                return;
+            }
             
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Succès");
             alert.setHeaderText(null);
-            alert.setContentText("Passager ajouté avec succès!");
+            alert.setContentText("Passager ajouté avec succès dans la base de données!");
             alert.showAndWait();
             
             // Clear fields
@@ -290,6 +361,14 @@ public class PassagersTab extends BorderPane {
             alert.setHeaderText(null);
             alert.setContentText("Veuillez entrer une masse de bagage valide (nombre).");
             alert.showAndWait();
+        } catch (SQLException e) {
+            // Gestion des erreurs SQLException supplémentaires
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Erreur Base de Données");
+            alert.setHeaderText("SQLException");
+            alert.setContentText("Erreur SQL: " + e.getMessage());
+            alert.showAndWait();
+            e.printStackTrace();
         }
     }
     

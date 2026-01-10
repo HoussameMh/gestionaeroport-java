@@ -44,6 +44,12 @@ public class Vol implements Serializable {
       this.seat_occupee++;
     }
   
+  public void retirer_passager(Passager passager){
+      if (this.passagers.remove(passager)) {
+          this.seat_occupee--;
+      }
+    }
+  
   public int getId_vol() {
       return id_vol;
   }
