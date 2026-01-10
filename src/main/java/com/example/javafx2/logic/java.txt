@@ -1,0 +1,106 @@
+Personne(abstract):
+  private int num_passeport ;
+  private String nom ;
+  private String prenom;
+  private String genre ;
+  private int date_naissance;
+
+  getters <= num_passeport, nom, prenom, genre, date_naissance ;
+  String toString();
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Passager extends Personne :
+  private Vol vol;
+  private double masse_bag;
+
+  Passager(num_passeport,nom,prenom,genre,date_naissance,vol,masse_bag); #seat auto-increment if compteur<= vol.get_seat()     if this.vol.seatdispo() vol.compt++ vol.passagers.push(this)
+  getters <= vol , masse_bag,  seat_num ;
+  setters <= vol,masse_bag;
+  boolean verifier_bag ; # if masse_bag<vol.masse_supportee
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Employee extends Personne :
+  String role; # Captaine , Copilote, STEWARD
+  Vol vol;
+  int total_travel ;
+
+  Employee( num_passeport,nom,prenom,genre,date_naissance,vol,role,total_travel);
+  getters<= role , vol , total_travel;
+  setters<=vol;
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Avion :
+  String matricule;
+  double[] dimensions =new double[2];
+  double longueur_arret;
+  double temps_arret;
+  double longueur_depart;
+  double temps_depart;
+  double masse_supportee ;
+  int seat_capacite ;
+  String etat; # disponible , en vol , maintenance ;
+  double[] coordonnees =new double[2];
+
+  Avion(matricule,dimensions[0],dimensions[1],longueur_arret,temps_arret, masse_supportee,seat_capacite,etat,coordonnees[0],coordonnees[1]);
+  getters<= matricule, modele, dimensions, masse_supportee,  seat_capacite, etat,longueur_arret ;
+  setters<= etat ,coordonnees;
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Piste: §
+  double[] coordonnees =new double[2];
+  String type; # parking ou escale
+  double[] dimensions =new double[2];
+  boolean est_dispo;
+  int temps_occup; # en minutes
+
+  Piste(coordonnees[0],coordonnees[1],est_dispo,type,dimensions[0],dimensions[1]);  # temps_occup=0 pour type=escale
+  void occuper(temps_occup) ; # changer l'etat et changer temps_occup si est_dispo
+  getters<= coordonnees , est_dispo,temps_occup,dimensions ;
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Vol:
+  static int compteur;
+  int nbr-seat-occupe;
+  int id_vol;
+  Avion avion;
+  List<Employee> employees= new ArrayList<Employee>();
+  List<Passager> pasagers= new ArrayList<Passager>();
+  String destination;
+  String depart;
+  Date date_vol;
+  int duree_vol; #en seconde
+
+  Vol(avion,employees,passagers,destination,depart,date_vol,duree_vol);# avion.etat=en vol if disponible
+  String afficher();
+  void ajouter_passager(Passager passager) ;
+  void ajouter_employee(Employee employee);
+  boolean seatdispo() # compare seatoccupe avec vol.sea-capacite  # utilise en class passager
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+Gestion_Aeroport:
+  List<Avion> avions= new ArrayList<Avion>();
+  List<Vol> vols=new ArrayList<Vol>();
+  List<Piste> pistes= new ArrayList<Piste>();
+
+  void planifier(Vol);
+  void ajouter_avion(Avion);
+  void ajouter_piste(Piste);
+  Piste autoriser_descente_(Vol);#parcourer toute les pistes ou pist.type=escale retourne
+                                une piste libre et conforme au dimensions de l'avion et
+                                longueur_arret pour desendre .
+                                est_dispo=False , temps_occup=avion.temps_arret,
+
+
+  Piste autoriser_depart(Vol); #parcourer toute les pistes ou pist.type=escale retourne
+                                une piste libre et conforme au dimensions de l'avion et
+                                longueur_depart pour departer .
+                                est_dispo=true , temps_occup=avion.temps_depart.
+  void parker(vol); # parcourer toute pistes ou pist.type=parker les changer coordonnees
+                      par les coordonnees de piste si possible et changer avion.etat=disponible et
+                      changer estdispo de la piste de descente qui stocker en variable.
+
+
+
+
+
+
